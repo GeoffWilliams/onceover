@@ -146,6 +146,10 @@ class Onceover
       # Remove interpolated references
       code_dirs.delete_if { |dir| dir[0] == '$'}
 
+      # Include all r10k-downloaded modules to support vendored and/or separate
+      # role and profile classes
+      code_dirs << "#{@tempdir}/#{@environmentpath}/production/modules"
+
       # Make sure that the paths are relative to the controlrepo root
       code_dirs.map! do |dir|
         File.expand_path(dir,@root)
