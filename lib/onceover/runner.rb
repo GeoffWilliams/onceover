@@ -91,30 +91,49 @@ class Onceover
       logger.info "WOOOOOOOOOOO ACCEPTANCE TESTS"
 
       pb = Onceover::PuppetBox.new
-
+      summary = {}
       @config.acceptance_tests.each { |test|
         # `test` contains the test matrix info from onceover.yaml, eg it contains
         # a packaged list of nodes and classes to run
         nodeset_yaml = @config.verify_acceptance_test(@repo,test)
 
         test.nodes.each { |node|
-          if nodeset_yaml["HOSTS"][node.name].has_key?('config')
+          summary[node.name] = {}
+          if nodeset_yaml["HOSTS"][node.name].has_key?('config') and nodeset_yaml["HOSTS"][node.name].has_key?('driver')
             test.classes.each { |puppet_class|
               logger.info "Acceptance testing #{node.name} #{puppet_class.name}"
-              pb.provision_and_test(
+              summary[node.name][puppet_class.name] = pb.provision_and_test(
+                nodeset_yaml["HOSTS"][node.name]["driver"],
                 node.name,
                 puppet_class.name,
                 nodeset_yaml["HOSTS"][node.name]['config'],
-                @repo
+                @repo,
               )
             }
           else
-            logger.error("onceover-nodes.yaml missing config element for #{node.name} (tests skipped)")
+            message = "onceover-nodes.yaml missing `config` or `driver` element for #{node.name} (tests skipped)"
+            summary[node.name] = message
           end
-          # else
-          #   logger.error("onceover-nodes.yaml missing node definition for #{node.name} (tests skipped)")
-          # end
         }
+      }
+
+      # print the report summary
+      indent = "  "
+      puts "\n\n\nSummary\n======="
+      summary.each { |node, class_results|
+        puts node
+        if class_results.class == String
+          puts "#{indent}#{class_results}"
+        else
+          class_results.each { |puppet_class, passed|
+            line = "#{indent}#{puppet_class}: #{passed ? "OK": "FAILED"}"
+            if passed
+              puts line.green
+            else
+              puts line.red
+            end
+          }
+        end
       }
 
       # pb = Onceover::PuppetBox.new(repo)
