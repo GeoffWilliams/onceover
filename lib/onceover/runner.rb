@@ -1,3 +1,4 @@
+require "onceover/puppetbox"
 class Onceover
   class Runner
     attr_reader :repo
@@ -87,14 +88,45 @@ class Onceover
     end
 
     def run_acceptance!
-      warn "[DEPRECATION] #{__method__} is deprecated due to the removal of Beaker"
+      logger.info "WOOOOOOOOOOO ACCEPTANCE TESTS"
 
-      Dir.chdir(@repo.tempdir) do
-        #`bundle install --binstubs`
-        #`bin/rake spec_standalone`
-        logger.debug "Running #{@command_prefix}rake acceptance from #{@repo.tempdir}"
-        exec("#{@command_prefix}rake acceptance")
-      end
+      pb = Onceover::PuppetBox.new
+
+      @config.acceptance_tests.each { |test|
+        # `test` contains the test matrix info from onceover.yaml, eg it contains
+        # a packaged list of nodes and classes to run
+        nodeset_yaml = @config.verify_acceptance_test(@repo,test)
+
+        test.nodes.each { |node|
+          if nodeset_yaml["HOSTS"][node.name].has_key?('config')
+            test.classes.each { |puppet_class|
+              logger.info "Acceptance testing #{node.name} #{puppet_class.name}"
+              pb.provision_and_test(
+                node.name,
+                puppet_class.name,
+                nodeset_yaml["HOSTS"][node.name]['config'],
+                @repo
+              )
+            }
+          else
+            logger.error("onceover-nodes.yaml missing config element for #{node.name} (tests skipped)")
+          end
+          # else
+          #   logger.error("onceover-nodes.yaml missing node definition for #{node.name} (tests skipped)")
+          # end
+        }
+      }
+
+      # pb = Onceover::PuppetBox.new(repo)
+      # pb.provision_and_test
+      # def self.provision_and_test(host,puppet_class,opts = {},repo = Onceover::Controlrepo.new)
+      #
+      # Dir.chdir(@repo.tempdir) do
+      #   #`bundle install --binstubs`
+      #   #`bin/rake spec_standalone`
+      #   logger.debug "Running #{@command_prefix}rake acceptance from #{@repo.tempdir}"
+      #   exec("#{@command_prefix}rake acceptance")
+      # end
     end
   end
 end

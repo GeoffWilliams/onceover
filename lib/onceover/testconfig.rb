@@ -134,15 +134,18 @@ class Onceover
     end
 
     def verify_acceptance_test(controlrepo,test)
-      warn "[DEPRECATION] #{__method__} is deprecated due to the removal of Beaker"
-
       require 'yaml'
       nodeset = YAML.load_file(controlrepo.nodeset_file)
       test.nodes.each do |node|
+        # puts "hode hash #{node}"
+        # puts "hode name #{node.name}"
+        # puts nodeset['HOSTS']
         unless nodeset['HOSTS'].has_key?(node.name)
           raise "Could not find nodeset for node: #{node.name}"
         end
       end
+
+      nodeset
     end
 
     def pre_condition
